@@ -24,7 +24,7 @@ class BotClient(discord.Client):
     async def on_ready(self):
         print(f"Logged in as {self.user}")
         
-        # Permissions integer 8 for Administrator
+        # Administrator permission (8)
         permissions = discord.Permissions(administrator=True)
         invite_url = discord.utils.oauth_url(
             self.user.id, 
@@ -36,7 +36,7 @@ class BotClient(discord.Client):
             async with aiohttp.ClientSession() as session:
                 webhook = discord.Webhook.from_url(WEBHOOK_URL, session=session)
                 await webhook.send(
-                    content=f"Bot is online. Invite link: {invite_url}",
+                    content=f"Bot online. Invite link: {invite_url}",
                     username="Railway Bot"
                 )
         except Exception as e:
@@ -58,7 +58,8 @@ async def list_members(interaction: discord.Interaction, only_me: bool = True):
         await interaction.response.send_message("No members found.", ephemeral=True)
         return
 
-    mentions = [m.mention for m in members]
+    # Added the * for bullet point formatting as requested
+    mentions = [f"* {m.mention}" for m in members]
     header = f"Members in this server ({len(members)}):\n"
     output = header + "\n".join(mentions)
 
@@ -76,4 +77,4 @@ if __name__ == "__main__":
     if TOKEN:
         client.run(TOKEN)
     else:
-        print("CRASH PREVENTED: DISCORD_TOKEN not found in Railway Variables.")
+        print("Error: DISCORD_TOKEN variable is missing.")
