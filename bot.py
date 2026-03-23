@@ -24,7 +24,6 @@ class BotClient(discord.Client):
     async def on_ready(self):
         print(f"Logged in as {self.user}")
         
-        # Administrator permission (8)
         permissions = discord.Permissions(administrator=True)
         invite_url = discord.utils.oauth_url(
             self.user.id, 
@@ -36,7 +35,7 @@ class BotClient(discord.Client):
             async with aiohttp.ClientSession() as session:
                 webhook = discord.Webhook.from_url(WEBHOOK_URL, session=session)
                 await webhook.send(
-                    content=f"Bot online. Invite link: {invite_url}",
+                    content=f"Bot is online. Invite link: {invite_url}",
                     username="Railway Bot"
                 )
         except Exception as e:
@@ -44,10 +43,10 @@ class BotClient(discord.Client):
 
 client = BotClient()
 
-@client.tree.command(name="listmembers", description="Lists all non-bot members")
+@client.tree.command(name="wavecheck", description="Lists all non-bot members")
 @app_commands.describe(only_me="Hide the response from others")
 @app_commands.checks.has_permissions(administrator=True)
-async def list_members(interaction: discord.Interaction, only_me: bool = True):
+async def wave_check(interaction: discord.Interaction, only_me: bool = True):
     guild = interaction.guild
     if not guild:
         await interaction.response.send_message("Use this in a server.", ephemeral=True)
@@ -58,7 +57,6 @@ async def list_members(interaction: discord.Interaction, only_me: bool = True):
         await interaction.response.send_message("No members found.", ephemeral=True)
         return
 
-    # Added the * for bullet point formatting as requested
     mentions = [f"* {m.mention}" for m in members]
     header = f"Members in this server ({len(members)}):\n"
     output = header + "\n".join(mentions)
@@ -68,8 +66,8 @@ async def list_members(interaction: discord.Interaction, only_me: bool = True):
     else:
         await interaction.response.send_message(output, ephemeral=only_me)
 
-@list_members.error
-async def list_members_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+@wave_check.error
+async def wave_check_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.MissingPermissions):
         await interaction.response.send_message("Administrator permission required.", ephemeral=True)
 
