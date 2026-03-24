@@ -72,15 +72,17 @@ async def list_members(interaction: discord.Interaction, only_me: bool = True):
     if not interaction.permissions.administrator:
         only_me = True
 
+    # Defer immediately so Discord doesn't time out while fetching members
+    await interaction.response.defer(ephemeral=only_me)
+
     members = [m async for m in guild.fetch_members(limit=None) if not m.bot]
 
     if not members:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             "No non-bot members found in this server.", ephemeral=True
         )
         return
 
-    # Removed the asterisk as requested in your preferences
     mentions = [f"{m.mention}" for m in members]
 
     header = f"Members in this server ({len(members)}):\n"
@@ -98,8 +100,7 @@ async def list_members(interaction: discord.Interaction, only_me: bool = True):
     if current.strip():
         chunks.append(current.rstrip())
 
-    await interaction.response.send_message(chunks[0], ephemeral=only_me)
-    for chunk in chunks[1:]:
+    for chunk in chunks:
         await interaction.followup.send(chunk, ephemeral=only_me)
 
 client.run(os.getenv("DISCORD_TOKEN"))
