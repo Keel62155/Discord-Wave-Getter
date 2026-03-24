@@ -72,7 +72,7 @@ async def list_members(interaction: discord.Interaction, only_me: bool = True):
     if not interaction.permissions.administrator:
         only_me = True
 
-    members = [m for m in guild.members if not m.bot]
+    members = [m async for m in guild.fetch_members(limit=None) if not m.bot]
 
     if not members:
         await interaction.response.send_message(
