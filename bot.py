@@ -49,7 +49,6 @@ client = BotClient()
     description="Lists all non-bot members in the server.",
 )
 @app_commands.describe(only_me="Whether the response is only visible to you (default: True)")
-@app_commands.checks.has_permissions(administrator=True)
 @app_commands.allowed_installs(guilds=True, users=True)
 @app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
 async def list_members(interaction: discord.Interaction, only_me: bool = True):
@@ -68,6 +67,10 @@ async def list_members(interaction: discord.Interaction, only_me: bool = True):
             ephemeral=True
         )
         return
+
+    # Non-admins always get an ephemeral response regardless of only_me
+    if not interaction.permissions.administrator:
+        only_me = True
 
     members = [m for m in guild.members if not m.bot]
 
@@ -98,12 +101,5 @@ async def list_members(interaction: discord.Interaction, only_me: bool = True):
     await interaction.response.send_message(chunks[0], ephemeral=only_me)
     for chunk in chunks[1:]:
         await interaction.followup.send(chunk, ephemeral=only_me)
-
-@list_members.error
-async def list_members_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
-    if isinstance(error, app_commands.MissingPermissions):
-        await interaction.response.send_message(
-            "You need the Administrator permission to use this command.", ephemeral=True
-        )
 
 client.run(os.getenv("DISCORD_TOKEN"))
