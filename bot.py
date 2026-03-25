@@ -71,6 +71,15 @@ async def list_members(interaction: discord.Interaction, only_me: bool = True):
             )
             return
 
+        # If the bot is only user-installed (not joined to this server) it can't fetch members
+        if discord.AppInstallationType.guild not in interaction.authorizing_integration_owners:
+            await interaction.response.send_message(
+                "The bot needs to be **added to this server** to list its members.\n"
+                "Have an admin invite it using the server install link.",
+                ephemeral=True
+            )
+            return
+
         # Non-admins always get an ephemeral response regardless of only_me
         if not interaction.permissions.administrator:
             only_me = True
@@ -80,7 +89,7 @@ async def list_members(interaction: discord.Interaction, only_me: bool = True):
 
         try:
             members = [m async for m in guild.fetch_members(limit=None) if not m.bot]
-        except discord.Forbidden:
+        except (discord.Forbidden, discord.NotFound):
             await interaction.followup.send(
                 "The bot needs to be **added to this server** to list its members.\n"
                 "Have an admin invite it using the server install link.",
