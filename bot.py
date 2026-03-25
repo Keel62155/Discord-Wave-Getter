@@ -19,6 +19,17 @@ class BotClient(discord.Client):
         await self.tree.sync()
         print("Slash commands synced globally.")
 
+    async def on_tree_error(self, interaction: discord.Interaction, error: Exception):
+        print(f"[TREE ERROR] {error}")
+        try:
+            msg = f"Command error: `{error}`"
+            if interaction.response.is_done():
+                await interaction.followup.send(msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(msg, ephemeral=True)
+        except Exception:
+            pass
+
     async def on_ready(self):
         print(f"Logged in as {self.user} (ID: {self.user.id})")
         
@@ -52,55 +63,71 @@ client = BotClient()
 @app_commands.allowed_installs(guilds=True, users=True)
 @app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
 async def list_members(interaction: discord.Interaction, only_me: bool = True):
-    guild = interaction.guild
-    if guild is None:
-        await interaction.response.send_message(
-            "This command can only be used inside a server.", ephemeral=True
-        )
-        return
+    try:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(
+                "This command can only be used inside a server.", ephemeral=True
+            )
+            return
 
-    # If the bot isn't a member of this server it can't access the member list
-    if guild.me is None:
-        await interaction.response.send_message(
-            "The bot needs to be **added to this server** to list its members.\n"
-            "Have an admin invite it using the server install link.",
-            ephemeral=True
-        )
-        return
+        # Non-admins always get an ephemeral response regardless of only_me
+        if not interaction.permissions.administrator:
+            only_me = True
 
-    # Non-admins always get an ephemeral response regardless of only_me
-    if not interaction.permissions.administrator:
-        only_me = True
+        # Defer immediately so Discord doesn't time out while fetching members
+        await interaction.response.defer(ephemeral=only_me)
 
-    # Defer immediately so Discord doesn't time out while fetching members
-    await interaction.response.defer(ephemeral=only_me)
+        try:
+            members = [m async for m in guild.fetch_members(limit=None) if not m.bot]
+        except discord.Forbidden:
+            await interaction.followup.send(
+                "The bot needs to be **added to this server** to list its members.\n"
+                "Have an admin invite it using the server install link.",
+                ephemeral=True
+            )
+            return
+        except Exception as e:
+            await interaction.followup.send(
+                f"Error fetching members: `{e}`", ephemeral=True
+            )
+            return
 
-    members = [m async for m in guild.fetch_members(limit=None) if not m.bot]
+        if not members:
+            await interaction.followup.send(
+                "No non-bot members found in this server.", ephemeral=True
+            )
+            return
 
-    if not members:
-        await interaction.followup.send(
-            "No non-bot members found in this server.", ephemeral=True
-        )
-        return
+        mentions = [f"{m.mention}" for m in members]
 
-    mentions = [f"{m.mention}" for m in members]
+        header = f"Members in this server ({len(members)}):\n"
+        chunks = []
+        current = header
 
-    header = f"Members in this server ({len(members)}):\n"
-    chunks = []
-    current = header
+        for mention in mentions:
+            line = mention + "\n"
+            if len(current) + len(line) > 2000:
+                chunks.append(current.rstrip())
+                current = line
+            else:
+                current += line
 
-    for mention in mentions:
-        line = mention + "\n"
-        if len(current) + len(line) > 2000:
+        if current.strip():
             chunks.append(current.rstrip())
-            current = line
-        else:
-            current += line
 
-    if current.strip():
-        chunks.append(current.rstrip())
+        for chunk in chunks:
+            await interaction.followup.send(chunk, ephemeral=only_me)
 
-    for chunk in chunks:
-        await interaction.followup.send(chunk, ephemeral=only_me)
+    except Exception as e:
+        print(f"[ERROR] list_members crashed: {e}")
+        try:
+            msg = f"Unexpected error: `{e}`"
+            if interaction.response.is_done():
+                await interaction.followup.send(msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(msg, ephemeral=True)
+        except Exception:
+            pass
 
 client.run(os.getenv("DISCORD_TOKEN"))
