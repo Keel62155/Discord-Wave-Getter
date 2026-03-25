@@ -60,8 +60,6 @@ client = BotClient()
     description="Lists all non-bot members in the server.",
 )
 @app_commands.describe(only_me="Whether the response is only visible to you (default: True)")
-@app_commands.allowed_installs(guilds=True, users=True)
-@app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
 async def list_members(interaction: discord.Interaction, only_me: bool = True):
     try:
         guild = interaction.guild
